@@ -20,8 +20,7 @@ public class MovingPlatform : MonoBehaviour
     float rad;
     bool floating = false;
 	bool buttons = false;
-	// bolean for when a button connection is required
-	[SerializeField] bool stich = false;
+	public bool stich = false;
     private FloatingPlatform fp;
 	private ButtonReciever bp;
 

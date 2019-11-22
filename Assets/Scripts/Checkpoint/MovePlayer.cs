@@ -46,5 +46,4 @@ public class MovePlayer : MonoBehaviour {
 		}
 		Destroy(transform.gameObject);
 	}
-
 }

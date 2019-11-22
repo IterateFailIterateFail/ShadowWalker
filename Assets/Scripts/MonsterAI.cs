@@ -8,27 +8,18 @@ public class MonsterAI : MonoBehaviour {
 	public Material[] material;
 	Transform player;
 	Vector3 lineOfSightEnd;
-	[SerializeField]
-	float radius; 
-	[SerializeField]
-	float speed;
-	int time  = 90;
+	public float radius = 8f;
+	public float speed = 0.01f;
+	int time  = 0;
 	Vector3 startPos;
 	Vector3 endPos;
-	[SerializeField]
-	bool patrol = false;
-	[SerializeField]
-	float endPointX = 0f;
-	[SerializeField]
-	float endPointY = 0f;
+	public bool patrol = false;
+	public float endPointX = 0f;
+	public float endPointY = 0f;
 	bool atStart = true;
-	int layermask;
-	bool chase = false;
 	// Use this for initialization
 	   
 	void Start () {
-		layermask = 1 << 2;
-		layermask = ~layermask;
 		rigidBody = GetComponent<Rigidbody2D>();
 		rend = GetComponent<Renderer>();
 		//rend.enabled = true;
@@ -46,101 +37,70 @@ public class MonsterAI : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-		//Debug.Log (layermask);
+		
 		Renderer rend = GetComponent<Renderer>();
 		Vector3 temp = transform.position;
-		temp.x = temp.x + radius;
+		temp.x = temp.x + 8f;
 		lineOfSightEnd = temp;
-		// clear line of sight CHARGE
-		if (LineOfSight () && !PlayerHiddenByObstacles ()) {
-			chase = true;
+		if (LineOfSight()&& !PlayerHiddenByObstacles()) {
 			time = 0;
-			rend.sharedMaterial = material [1];
-
+			rend.sharedMaterial = material[1];
 			transform.position = Vector3.MoveTowards (transform.position, player.position, speed);
-//			Debug.Log (player.position);
-			if (rigidBody.velocity.x == 0) {// collison..ish
-				//Debug.Log("Jump!");
-				Vector2 velocity = rigidBody.velocity;
-				velocity.y = speed * rigidBody.gravityScale;
-				rigidBody.velocity = velocity;
-			}
-		}else if (time == 90) {
-			
+		}else if(time < 90){// pause as it looks for player
+			time++;
+		}else if (time == 90){	
 			// if no players, jus go back to what it was doing before, either patroling and sulking
-			if (chase) {
-				startPos = transform.position;
-				if (patrol) {
-					temp = transform.position;
-					temp.x += endPointX;
-					temp.y += endPointY;
-					endPos = temp;
-				}
-				chase = false;
-			}
-			rend.sharedMaterial = material [0];
+			rend.sharedMaterial = material[0];
 			if (Vector3.Distance (transform.position, endPos) <= 0.05 && atStart) {
 				atStart = false;
-				//Debug.Log ("at end");
-			} else if (Vector3.Distance (transform.position, startPos) <= 0.05 && !atStart) {
+			//	Debug.Log ("at end");
+			} else if (Vector3.Distance(transform.position,startPos) <= 0.05 && !atStart) {
 				atStart = true;
-				//Debug.Log ("at start");
+			//	Debug.Log ("at start");
 			}
-			if (atStart && patrol)
-				transform.position = Vector3.MoveTowards (transform.position, endPos, speed);
-			else
-				transform.position = Vector3.MoveTowards (transform.position, startPos, speed);
+			if (atStart && patrol) transform.position = Vector3.MoveTowards (transform.position, endPos, speed);
+			else transform.position = Vector3.MoveTowards (transform.position,startPos ,speed);
 
-		// might be temporay?
-		} else if (time == 200) { // disappear 
-			Object.Destroy(this.gameObject);
 		}
-		if (!chase) {
-			time++;
-		}
-//		Debug.Log (time);
+
 
 	}
 	bool LineOfSight() {
 		// check if the player is within the enemy's field of view
 		// this is only checked if the player is within the enemy's sight range
 
-		Vector2 directionToPlayer = player.position - transform.position; // represents the direction from the enemy to the player 
+		// find the angle between the enemy's 'forward' direction and the player's location and return true if it's within 65 degrees (for 130 degree field of view)
 
-		float angle = Vector2.SignedAngle(transform.position,directionToPlayer );
-		//Debug.Log (angle);
+		//UnityEngine.Debug.DrawLine(transform.position, player.position, Color.magenta); // a line drawn in the Scene window equivalent to directionToPlayer
+		Vector2 directionToPlayer = player.position - transform.position; // represents the direction from the enemy to the player 
+		Vector2 lineOfSight1 = lineOfSightEnd - transform.position; // the centre of the enemy's field of view, the direction of looking directly ahead
+		//UnityEngine.Debug.DrawLine(transform.position, lineOfSightEnd,Color.yellow);
+		//UnityEngine.Debug.DrawLine(transform.position, lineOfSightEnd,Color.yellow);// a line drawn in the Scene window equivalent to the enemy's field of view centre
+		Vector2 lineOfSight2 = lineOfSightEnd + transform.position; // the centre of the enemy's field of view, the direction of looking directly ahead
+		// calculate the angle formed between the player's position and the centre of the enemy's line of sight
+		float angle = Vector2.Angle(directionToPlayer, lineOfSight1);
+		float angle2 = Vector2.Angle(directionToPlayer, lineOfSight2);
 		if(directionToPlayer.magnitude > radius) return false;
 		// if the player is within 65 degrees (either direction) of the enemy's centre of vision (i.e. within a 130 degree cone whose centre is directly ahead of the enemy) return true
-		// Note: Not sure why but compasss is moved 135 degees
-		if (((angle < 180 && angle > 90 )||(angle > -90 && angle < -0))&& directionToPlayer.magnitude < radius) {
-		//	Debug.Log ("In range");
+		if (angle < 65 || (angle2 > 115 && angle2 < 180))
 			return true;
-		} else {
-		//	Debug.Log ("No in range");
+		else
 			return false;
-		}
 	}
 
 	bool PlayerHiddenByObstacles(){
 		float distanceToPlayer = Vector2.Distance(transform.position, player.position);
-		RaycastHit2D[] hits = Physics2D.RaycastAll(transform.position, player.position - transform.position, distanceToPlayer,layermask);
+		RaycastHit2D[] hits = Physics2D.RaycastAll(transform.position, player.position - transform.position, distanceToPlayer);
 		//UnityEngine.Debug.DrawLine(transform.position, player.position - transform.position, Color.blue); // draw line in the Scene window to show where the raycast is looking
 		//List<float> distances = new List<float>();
-		foreach (RaycastHit2D hit in hits){  
-			//Debug.Log (hit.transform.gameObject.layer);
-			//Debug.Log (hit.transform.tag);
+		foreach (RaycastHit2D hit in hits){           
 			// ignore the enemy's own colliders (and other enemies)
 			if (hit.transform.tag == "Enemy")continue;
 			//Debug.Log (hit.transform.tag);
 			// if anything other than the player is hit then it must be between the player and the enemy's eyes (since the player can only see as far as the player)
-			if (hit.transform.tag == "Player") {
-				//Debug.Log("Not Hidden");
-				return false;
-			}
+			if (hit.transform.tag != "Player")return true;
 		}
-		//Debug.Log ("hidden");
 		// if no objects were closer to the enemy than the player return false (player is not hidden by an object)
-		return true; 
+		return false; 
 	}
-
 }

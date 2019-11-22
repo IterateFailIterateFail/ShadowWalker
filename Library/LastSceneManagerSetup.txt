@@ -1,4 +1,4 @@
 sceneSetups:
-- path: Assets/Darren's NEW playground.unity
+- path: Assets/Darrens playground.unity
   isLoaded: 1
   isActive: 1

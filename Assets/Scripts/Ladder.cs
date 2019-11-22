@@ -33,7 +33,6 @@ public class Ladder : MonoBehaviour {
 			}
 		} else {
 			if (player.position.y > collsionPoint && !pc.inLadder) {
-				
 				collider.isTrigger = false;
 			} else if (player.position.y < collsionPoint || pc.inLadder) {
 				collider.isTrigger = true;

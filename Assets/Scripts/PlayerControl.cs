@@ -39,20 +39,14 @@ public class PlayerControl : MonoBehaviour {
 	bool canPortal = true;
 	// part of the cooldown for portal use
 	float time = 0;
-	// Used to determine what objects should be considered as 'ground' 
+	// Used to determine what objects should be considered as 'ground'
 	[SerializeField] private LayerMask whatIsGround;
-	//Array to store tags which are 'ground'
-	string[] grounds =new string[]{"Platform","MovPlatform","Box","Ladder"};
 	// The player's rigidbody
 	private Rigidbody2D rigidBody;
-	// The player's colider
-	private BoxCollider2D collider;
 	// Track whether we are travelling in a portal
 	private bool inPortalTravel = false;
-	//Tack whether we are travelling on a ladder, meangt to be public
+	//Tack whether we are travelling on a ladder
 	public bool inLadder = false;
-	//TRack if you're in a cabinet or not
-	bool inCabinet = false;
 	// speed at which the stumble animation plays
 	[SerializeField] float warningSpeed;
 	// speed at which you just die
@@ -66,18 +60,15 @@ public class PlayerControl : MonoBehaviour {
 	[SerializeField]RuntimeAnimatorController[] anim;
 	// Place to store animation controllers for certain events like runnign and jumping... 
 	[SerializeField] Sprite idle;
-	//Monster
-	GameObject monster;
 
     // Use this for initialization
 	void Start () {
-		monster = GameObject.FindGameObjectWithTag ("Enemy");
-		collider = GetComponent<BoxCollider2D> ();
 		rigidBody = GetComponent<Rigidbody2D>();
 		moverPrefab = Resources.Load("MovePlayerToStart", typeof(GameObject)) as GameObject;
 		prevGrav = rigidBody.gravityScale;
 		sprite = transform.Find ("shadow kid_character").gameObject.GetComponent<SpriteRenderer>();
 		animator = transform.Find ("shadow kid_character").gameObject.GetComponent<Animator>();
+
 	}
 
 	// FixedUpdate is called once per physics step regardless of framerate
@@ -87,7 +78,7 @@ public class PlayerControl : MonoBehaviour {
 		Vector2 position = rigidBody.position;
 
 		// Accelerate horizontally as we walk, but not if we're in a portal
-		if ((!inPortalTravel && !inLadder && !inCabinet)) { //&& isGrounded()
+		if ((!inPortalTravel || !inLadder )) { //&& isGrounded()
 			float moveHorizontal = Input.GetAxis("Horizontal");
 			velocity.x += moveHorizontal * acceleration;
 		}
@@ -133,7 +124,6 @@ public class PlayerControl : MonoBehaviour {
 			velocity.y = 0;
 		}
 
-
 		//Limits speed of Player, so Player doesn't fly across screen.
 		velocity.x = Mathf.Clamp(velocity.x,  -maxSpeed, maxSpeed);
 		if (velocity.x != 0 && isGrounded() && velocity.y == 0) {
@@ -145,7 +135,7 @@ public class PlayerControl : MonoBehaviour {
 			sprite.sprite = idle; 
 			animator.enabled = false;
 		}
-		//Debug.Log (velocity);
+		Debug.Log (velocity);
 		// Assign the modified velocit
 		rigidBody.velocity = velocity;
 		rigidBody.position = position;
@@ -157,13 +147,12 @@ public class PlayerControl : MonoBehaviour {
 	// Handle the keypresses here because the functions will return 'true' for a frame,
 	// not for a physics step
 	void Update() {
-		//Debug.Log(inl);
+		//Debug.Log(canUseLadder());
 		//Debug.Log (inLadder);
 		//Vector2 vel = rigidBody.velocity; // velcoity was taken for soem reason
 		//Debug.Log (inPortalTravel);
-
 		// When the player tries to flip gravity, only do so if we are over a portal
-		if (Input.GetKeyDown("space") && canUsePortal() && canPortal && isGrounded() ) {
+		if (Input.GetKeyDown("space") && canUsePortal() && canPortal && isGrounded()) {
 			rigidBody.rotation += 180;
 			rigidBody.gravityScale *= -1;
 			prevGrav = rigidBody.gravityScale;
@@ -175,52 +164,13 @@ public class PlayerControl : MonoBehaviour {
 			canPortal = false;
 
 		}
-
-
-		// if player is next to cabinet, check we can use it then jump in
-		if (Input.GetKeyDown(KeyCode.E) && canUseCabinet() && !inCabinet) {
-			//Instert getting in animation here
-			// if monster within the screen and a bit mosnetr will still chase us
-			inCabinet = true;
-			Vector2 velocity = Vector2.zero;
-			// dist may need adjusting
-			if (monsterDist () > Screen.width / 2.5) {
-				gameObject.layer = 2;
-				collider.isTrigger = true;
-				rigidBody.velocity = velocity;
-				rigidBody.gravityScale = 0f;
-				foreach (Transform child in transform) {
-					child.gameObject.layer = 2;
-				}
-
-			} else {
-				//insert RIP AND TEAR THE BOY animation here. But for now we'll just have a "YOU CANNOT REST WITH ENEMEIES NEARBY" thign here.
-				Debug.Log("YOU CANNOT REST WITH ENEMEIES NEARBY");
-			}
-
-			//Debug.Log ("hiding");
-		}
-
-		//if in cabinet jump out when pressed e
-		else if (Input.GetKeyDown(KeyCode.E) && inCabinet) {
-			gameObject.layer = 0;
-			inCabinet = false;
-			collider.isTrigger = false;
-			rigidBody.gravityScale = prevGrav;
-			foreach(Transform child in transform){
-				child.gameObject.layer = 0;
-			}
-			//Debug.Log ("not hiding");
-		}
-
-
 		// When the player tries to jump, jump if we are on the ground
-		if ((Input.GetKeyDown("up") || Input.GetKeyDown("space") )&& isGrounded() && !inCabinet){
+		if ((Input.GetKeyDown("up") || Input.GetKeyDown("space") )&& isGrounded()){
 			animator.enabled = true;
 			animator.runtimeAnimatorController = anim [1];
 			Vector2 velocity = rigidBody.velocity;
 			velocity.y = jumpSpeed * rigidBody.gravityScale;
-		//	Debug.Log (jumpSpeed * rigidBody.gravityScale);
+			Debug.Log (jumpSpeed * rigidBody.gravityScale);
 			rigidBody.velocity = velocity;
 
 			//Debug.Log (inPortalTravel);
@@ -234,13 +184,10 @@ public class PlayerControl : MonoBehaviour {
 			inLadder = false;
 			rigidBody.gravityScale = prevGrav;
 		}
-		// This is for teh time when you reach the top of the ladder EXPENSIVE
-		if (!inCabinet &&!canUseLadder ()) {
+		if (!canUseLadder ()) {
 			inLadder = false;
 			rigidBody.gravityScale = prevGrav;
-		//	Debug.Log("called");
 		}
-
 		// cooldown on portal
 		if (!canPortal) {
 			time++;
@@ -255,13 +202,9 @@ public class PlayerControl : MonoBehaviour {
 		else if (Input.GetKeyDown ("right") && !sprite.flipX && !isUpsideDown())  flipSprite();
 		else if (Input.GetKeyDown ("left") && !sprite.flipX && isUpsideDown())  flipSprite();
 		else if (Input.GetKeyDown ("right") && sprite.flipX && isUpsideDown())  flipSprite();
-		//Debug.Log (canUseCabinet());
 
-	}
+		//rigidBody.velocity = vel; 
 
-	// Check the distacne from monster to player
-	float monsterDist(){
-		return((monster.transform.position - transform.position).magnitude);
 	}
 
 	// Yep. We are in a portal
@@ -278,13 +221,7 @@ public class PlayerControl : MonoBehaviour {
 		Collider2D[] colliders = Physics2D.OverlapCircleAll(groundCheckPoint.position, 1.3f, whatIsGround);
 		//UnityEngine.Debug.DrawLine(groundCheckPoint,groundCheckPoint + Vector3.right*0.5f, Color.red);
 		// Return true if there is a least one
-		for (int i = 0; i < colliders.Length; i++) { //
-			//we're resorting to loops now(slow?) to compare tags to corect tags
-			foreach (string tag in grounds) {
-				if (string.Equals (tag, colliders [i].tag)) return true;
-			}
-		}
-		return false;
+		return colliders.Length > 0;
 	}
 
 	/*void OnDrawGizmos() { groudnpoint debugger
@@ -294,7 +231,7 @@ public class PlayerControl : MonoBehaviour {
 	}
 	*/
 	public bool isUpsideDown() {
-		return rigidBody.gravityScale < 0;
+		return prevGrav < 0;
 	}
 
 	// Returns true if we are standing over a portal, false otherwise
@@ -307,18 +244,6 @@ public class PlayerControl : MonoBehaviour {
         }
 		return false;
 	}
-
-	// Returns true if we are standing over net to a Cabineet, false otherwise
-	bool canUseCabinet() {
-		// Find all objects that overlap a circle, centered on us, radius of 1.1
-		// NOTE: Radius might need tweaking
-		Collider2D[] hitColliders = Physics2D.OverlapCircleAll(transform.position, 1.1f);
-		for (int i = 0; i < hitColliders.Length; i++) {
-			if (hitColliders[i].tag == "Cabinet") return true;
-		}
-		return false;
-	}
-
 	// returns true if we are standing on or in a ladder, false otherwise
 	bool canUseLadder() {
 		// Get a point in the bottom middle of the hitbox

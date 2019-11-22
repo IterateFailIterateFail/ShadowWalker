@@ -4,13 +4,12 @@
 TagManager:
   serializedVersion: 2
   tags:
-  - Box
   - Portal
+  - Box
   - MovPlatform
+  - Background0
   - Enemy
-  - Cabinet
   - Ladder
-  - Platform
   layers:
   - Default
   - TransparentFX
@@ -20,7 +19,7 @@ TagManager:
   - UI
   - 
   - 
-  - 
+  - Platforms
   - 
   - 
   - 
